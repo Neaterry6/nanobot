@@ -72,6 +72,7 @@ packages = ["nanobot"]
 # Include non-Python files in skills and templates
 [tool.hatch.build]
 include = [
+    "app.py",
     "nanobot/**/*.py",
     "nanobot/templates/**/*.md",
     "nanobot/skills/**/*.md",
@@ -80,6 +81,7 @@ include = [
 
 [tool.hatch.build.targets.sdist]
 include = [
+    "app.py",
     "nanobot/",
     "bridge/",
     "README.md",
