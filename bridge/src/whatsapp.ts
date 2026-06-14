@@ -134,14 +134,16 @@ export class WhatsAppClient {
     if (this.pairingCodeIssued || await readRegistered(this.options.authDir)) return;
 
     let number = normalizeNumber(this.options.phoneNumber || process.env.WHATSAPP_PHONE_NUMBER || '');
-    if (!number && process.stdin.isTTY) {
+    if (!number) {
+      console.log('\nWhatsApp is not linked yet.');
+      console.log('Type your WhatsApp phone number with country code (example: 15551234567).');
       const rl = readline.createInterface({ input, output });
-      const answer = await rl.question('Enter WhatsApp phone number with country code for pairing: ');
+      const answer = await rl.question('Phone number: ');
       rl.close();
       number = normalizeNumber(answer || '');
     }
     if (!number) {
-      const message = 'WhatsApp number pairing requires WHATSAPP_PHONE_NUMBER (10-15 digits with country code). QR pairing is disabled.';
+      const message = 'Invalid WhatsApp number. Restart and enter 10-15 digits with country code, or set WHATSAPP_PHONE_NUMBER.';
       console.error(message);
       this.options.onStatus('pairing_number_required');
       return;

@@ -834,7 +834,7 @@ def _get_bridge_dir() -> Path:
 
 @channels_app.command("login")
 def channels_login():
-    """Link device via QR code."""
+    """Link WhatsApp with a phone-number pairing code."""
     import subprocess
 
     from nanobot.config.loader import load_config
@@ -842,8 +842,8 @@ def channels_login():
     config = load_config()
     bridge_dir = _get_bridge_dir()
 
-    console.print(f"{__logo__} Starting bridge...")
-    console.print("Scan the QR code to connect.\n")
+    console.print(f"{__logo__} Starting WhatsApp bridge...")
+    console.print("Enter your WhatsApp number when asked, then use the printed pairing code in WhatsApp → Linked Devices → Link with phone number.\n")
 
     env = {**os.environ}
     if config.channels.whatsapp.bridge_token:
