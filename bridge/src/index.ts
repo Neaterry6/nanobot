@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * nanobot WhatsApp Bridge
+ * broken WhatsApp Bridge
  * 
  * This bridge connects WhatsApp Web to nanobot's Python backend
  * via WebSocket. It handles authentication, message forwarding,
@@ -10,7 +10,7 @@
  *   npm run build && npm start
  *   
  * Or with custom settings:
- *   BRIDGE_PORT=3001 AUTH_DIR=~/.nanobot/whatsapp npm start
+ *   BRIDGE_PORT=3001 AUTH_DIR=~/.nanobot/whatsapp WHATSAPP_PHONE_NUMBER=15551234567 npm start
  */
 
 // Polyfill crypto for Baileys in ESM
@@ -27,7 +27,7 @@ const PORT = parseInt(process.env.BRIDGE_PORT || '3001', 10);
 const AUTH_DIR = process.env.AUTH_DIR || join(homedir(), '.nanobot', 'whatsapp-auth');
 const TOKEN = process.env.BRIDGE_TOKEN || undefined;
 
-console.log('🐈 nanobot WhatsApp Bridge');
+console.log('🐈 broken WhatsApp Bridge');
 console.log('========================\n');
 
 const server = new BridgeServer(PORT, AUTH_DIR, TOKEN);

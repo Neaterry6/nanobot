@@ -203,6 +203,7 @@ def _make_provider(config: Config):
     from nanobot.providers.custom_provider import CustomProvider
     from nanobot.providers.litellm_provider import LiteLLMProvider
     from nanobot.providers.openai_codex_provider import OpenAICodexProvider
+    from nanobot.providers.olama_provider import OlamaProvider
 
     model = config.agents.defaults.model
     provider_name = config.get_provider_name(model)
@@ -211,6 +212,14 @@ def _make_provider(config: Config):
     # OpenAI Codex (OAuth)
     if provider_name == "openai_codex" or model.startswith("openai-codex/"):
         return OpenAICodexProvider(default_model=model)
+
+    # Olama: local hosted fallback at http://127.0.0.1:19074
+    if provider_name == "olama" or model.startswith("olama/") or model == "broken":
+        return OlamaProvider(
+            api_key=p.api_key if p else "no-key",
+            api_base=config.get_api_base(model) or "http://127.0.0.1:19074",
+            default_model=model,
+        )
 
     # Custom: direct OpenAI-compatible endpoint, bypasses LiteLLM
     if provider_name == "custom":

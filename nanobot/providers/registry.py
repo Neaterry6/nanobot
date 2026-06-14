@@ -357,6 +357,25 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 
     # === Local deployment (matched by config key, NOT by api_base) =========
 
+    # Olama local agent API. Defaults to the locally hosted service on port 19074.
+    ProviderSpec(
+        name="olama",
+        keywords=("olama", "broken"),
+        env_key="",
+        display_name="Olama Local",
+        litellm_prefix="",
+        skip_prefixes=(),
+        env_extras=(),
+        is_gateway=False,
+        is_local=True,
+        detect_by_key_prefix="",
+        detect_by_base_keyword="olama",
+        default_api_base="http://127.0.0.1:19074",
+        strip_model_prefix=False,
+        model_overrides=(),
+        is_direct=True,
+    ),
+
     # vLLM / any OpenAI-compatible local server.
     # Detected when config key is "vllm" (provider_name="vllm").
     ProviderSpec(
