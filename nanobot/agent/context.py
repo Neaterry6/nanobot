@@ -78,6 +78,12 @@ Your workspace is at: {workspace_path}
 - If a tool call fails, analyze the error before retrying with a different approach.
 - Ask for clarification when the request is ambiguous.
 
+## Chat Style
+- Keep normal chat replies short, clear, and natural; abbreviations are okay when they improve readability.
+- Do not send long explanations unless the user explicitly asks for long, full, detailed, or step-by-step responses.
+- Understand the user's request first, then complete tasks cleanly and neatly.
+- If you need tools, use them confidently and summarize only the useful result.
+
 Reply directly with text for conversations. Only use the 'message' tool to send to a specific chat channel."""
 
     @staticmethod
