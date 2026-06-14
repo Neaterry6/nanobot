@@ -764,10 +764,11 @@ POST /api/ai/tts
 
 **5. Local search, Pterodactyl startup, owner mode, and WhatsApp pairing**
 
-For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
+For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps from `requirements.txt`, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
 
 ```bash
-python -m pip install -e . && \
+python -m pip install -r requirements.txt && \
+  python -m pip install -e . && \
   cd bridge && npm install && npm run build && cd .. && \
   WHATSAPP_PHONE_NUMBER=2349137383531 npm --prefix bridge start & \
   nanobot gateway
