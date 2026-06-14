@@ -27,3 +27,7 @@ json-repair>=0.57.0,<1.0.0
 # which requires system build tools (for example `make`) on many hosts.
 # Install it only when enabling the Matrix channel:
 #   python -m pip install "nanobot-ai[matrix]"
+
+# WhatsApp support is optional. Install when enabling the WhatsApp channel:
+#   python -m pip install "nanobot-ai[whatsapp]"
+#   or: python -m pip install neonize segno

@@ -698,7 +698,7 @@ def channels_status():
     table.add_row(
         "WhatsApp",
         "✓" if wa.enabled else "✗",
-        wa.bridge_url
+        wa.session_path
     )
 
     dc = config.channels.discord
@@ -774,87 +774,34 @@ def channels_status():
     console.print(table)
 
 
-def _get_bridge_dir() -> Path:
-    """Get the bridge directory, setting it up if needed."""
-    import shutil
-    import subprocess
-
-    # User's bridge location
-    user_bridge = Path.home() / ".nanobot" / "bridge"
-
-    # Check if already built
-    if (user_bridge / "dist" / "index.js").exists():
-        return user_bridge
-
-    # Check for npm
-    if not shutil.which("npm"):
-        console.print("[red]npm not found. Please install Node.js >= 20.[/red]")
-        raise typer.Exit(1)
-
-    # Find source bridge: first check package data, then source dir
-    pkg_bridge = Path(__file__).parent.parent / "bridge"  # nanobot/bridge (installed)
-    src_bridge = Path(__file__).parent.parent.parent / "bridge"  # repo root/bridge (dev)
-
-    source = None
-    if (pkg_bridge / "package.json").exists():
-        source = pkg_bridge
-    elif (src_bridge / "package.json").exists():
-        source = src_bridge
-
-    if not source:
-        console.print("[red]Bridge source not found.[/red]")
-        console.print("Try reinstalling: pip install --force-reinstall nanobot")
-        raise typer.Exit(1)
-
-    console.print(f"{__logo__} Setting up bridge...")
-
-    # Copy to user directory
-    user_bridge.parent.mkdir(parents=True, exist_ok=True)
-    if user_bridge.exists():
-        shutil.rmtree(user_bridge)
-    shutil.copytree(source, user_bridge, ignore=shutil.ignore_patterns("node_modules", "dist"))
-
-    # Install and build
-    try:
-        console.print("  Installing dependencies...")
-        subprocess.run(["npm", "install"], cwd=user_bridge, check=True, capture_output=True)
-
-        console.print("  Building...")
-        subprocess.run(["npm", "run", "build"], cwd=user_bridge, check=True, capture_output=True)
-
-        console.print("[green]✓[/green] Bridge ready\n")
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Build failed: {e}[/red]")
-        if e.stderr:
-            console.print(f"[dim]{e.stderr.decode()[:500]}[/dim]")
-        raise typer.Exit(1)
-
-    return user_bridge
-
-
 @channels_app.command("login")
 def channels_login():
-    """Link WhatsApp with a phone-number pairing code."""
-    import subprocess
+    """Link WhatsApp by printing a QR code from the Python client."""
+    import asyncio
 
     from nanobot.config.loader import load_config
 
     config = load_config()
-    bridge_dir = _get_bridge_dir()
+    wa = config.channels.whatsapp
 
-    console.print(f"{__logo__} Starting WhatsApp bridge...")
-    console.print("Enter your WhatsApp number when asked, then use the printed pairing code in WhatsApp → Linked Devices → Link with phone number.\n")
+    console.print(f"{__logo__} Starting Python WhatsApp login...")
+    console.print("Scan the QR code in WhatsApp → Settings → Linked Devices → Link a device. Press Ctrl+C after it connects.\n")
 
-    env = {**os.environ}
-    if config.channels.whatsapp.bridge_token:
-        env["BRIDGE_TOKEN"] = config.channels.whatsapp.bridge_token
+    async def run_login() -> None:
+        bus = MessageBus()
+        channel = WhatsAppChannel(wa, bus, config.owner)
+        await channel.start()
 
     try:
-        subprocess.run(["npm", "start"], cwd=bridge_dir, check=True, env=env)
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Bridge failed: {e}[/red]")
-    except FileNotFoundError:
-        console.print("[red]npm not found. Please install Node.js.[/red]")
+        from nanobot.bus.queue import MessageBus
+        from nanobot.channels.whatsapp import WhatsAppChannel
+
+        asyncio.run(run_login())
+    except ImportError:
+        console.print("[red]WhatsApp login requires Python dependencies: neonize and segno.[/red]")
+        console.print('Install them with: [cyan]python -m pip install "nanobot-ai[whatsapp]"[/cyan]')
+    except KeyboardInterrupt:
+        console.print("\n[green]WhatsApp login stopped.[/green]")
 
 
 # ============================================================================

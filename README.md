@@ -170,7 +170,7 @@ Connect nanobot to your favorite chat platform.
 |---------|---------------|
 | **Telegram** | Bot token from @BotFather |
 | **Discord** | Bot token + Message Content intent |
-| **WhatsApp** | Phone-number pairing code (QR disabled) |
+| **WhatsApp** | Python QR-code login with Neonize |
 | **Feishu** | App ID + App Secret |
 | **Mochat** | Claw token (auto-setup available) |
 | **DingTalk** | App Key + App Secret |
@@ -382,16 +382,14 @@ nanobot gateway
 <details>
 <summary><b>WhatsApp</b></summary>
 
-Requires **Node.js ≥20** for the Baileys bridge. This can run on a Node.js panel as long as the panel supports Node 20+, persistent processes, outbound network access, and writable auth storage (for example `~/.nanobot/whatsapp-auth`).
+WhatsApp now runs from Python with Neonize, so it does not require the old Node.js/Baileys bridge. Install the optional WhatsApp dependencies, then scan the QR code printed in your console. The session is saved to `~/.nanobot/whatsapp-auth/session.db` by default and reused on later starts.
 
-**1. Link device with a phone number (no QR)**
-
-Set your WhatsApp number with country code, then start the bridge/login flow. The bridge writes the latest code to `pairing.json` inside the auth directory and also broadcasts a `pairing_code` event to connected clients.
+**1. Link device with a console QR code**
 
 ```bash
-export WHATSAPP_PHONE_NUMBER=15551234567
+python -m pip install "nanobot-ai[whatsapp]"
 nanobot channels login
-# Enter the printed pairing code in WhatsApp → Settings → Linked Devices → Link with phone number
+# Scan the printed QR code in WhatsApp → Settings → Linked Devices → Link a device
 ```
 
 **2. Configure**
@@ -410,8 +408,7 @@ nanobot channels login
 **3. Run** (two terminals)
 
 ```bash
-# Terminal 1
-export WHATSAPP_PHONE_NUMBER=15551234567
+# Terminal 1: scan once, then leave it running until connected
 nanobot channels login
 
 # Terminal 2
@@ -762,15 +759,13 @@ POST /api/ai/tts
 
 > Note: no free model speaks every language perfectly. For best results, install multiple voices and route by language, with XTTS-v2 for multilingual speech and Piper/MMS voices for languages where you want higher quality.
 
-**5. Local search, Pterodactyl startup, owner mode, and WhatsApp pairing**
+**5. Local search, Pterodactyl startup, owner mode, and WhatsApp QR login**
 
-For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps from `requirements.txt`, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The default `requirements.txt` intentionally excludes optional Matrix dependencies, because Matrix end-to-end encryption support pulls `python-olm`, which often fails on hosted panels that do not provide system build tools such as `make`. If you enable the Matrix channel on a host with build tools installed, add `python -m pip install "nanobot-ai[matrix]"` before starting nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
+For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps from `requirements.txt`, installs the optional WhatsApp dependencies, starts your local Olama/media stack, then starts nanobot. The default `requirements.txt` intentionally excludes optional Matrix dependencies, because Matrix end-to-end encryption support pulls `python-olm`, which often fails on hosted panels that do not provide system build tools such as `make`. If you enable the Matrix channel on a host with build tools installed, add `python -m pip install "nanobot-ai[matrix]"` before starting nanobot. Run `nanobot channels login` once to print a WhatsApp QR code in the console; after scanning, the session is saved under `~/.nanobot/whatsapp-auth/session.db` and reused on later starts.
 
 ```bash
 python -m pip install -r requirements.txt && \
-  python -m pip install -e . && \
-  cd bridge && npm install && npm run build && cd .. && \
-  WHATSAPP_PHONE_NUMBER=2349137383531 npm --prefix bridge start & \
+  python -m pip install -e ".[whatsapp]" && \
   nanobot gateway
 ```
 
@@ -1034,7 +1029,7 @@ MCP tools are automatically discovered and registered on startup. The LLM can us
 | `nanobot gateway` | Start the gateway |
 | `nanobot status` | Show status |
 | `nanobot provider login openai-codex` | OAuth login for providers |
-| `nanobot channels login` | Link WhatsApp with a phone-number pairing code (QR disabled) |
+| `nanobot channels login` | Link WhatsApp by printing a QR code in the console |
 | `nanobot channels status` | Show channel status |
 
 Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
