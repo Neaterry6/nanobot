@@ -23,6 +23,7 @@ python-socks[asyncio]>=2.8.0,<3.0.0
 prompt-toolkit>=3.0.50,<4.0.0
 mcp>=1.26.0,<2.0.0
 json-repair>=0.57.0,<1.0.0
-matrix-nio[e2e]>=0.25.2
-mistune>=3.0.0,<4.0.0
-nh3>=0.2.17,<1.0.0
+# Matrix support is optional because matrix-nio[e2e] pulls python-olm,
+# which requires system build tools (for example `make`) on many hosts.
+# Install it only when enabling the Matrix channel:
+#   python -m pip install "nanobot-ai[matrix]"
