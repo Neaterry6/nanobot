@@ -125,7 +125,7 @@ class WebFetchTool(Tool):
         self.max_chars = max_chars
         self.proxy = proxy
 
-    async def execute(self, url: str, extractMode: str = "markdown", maxChars: int | None = None, **kwargs: Any) -> str:
+    async def execute(self, url: str, extractMode: str = "markdown", maxChars: int | None = None, **kwargs: Any) -> str:  # noqa: N803
         from readability import Document
 
         max_chars = maxChars or self.max_chars
@@ -157,7 +157,8 @@ class WebFetchTool(Tool):
                 text, extractor = r.text, "raw"
 
             truncated = len(text) > max_chars
-            if truncated: text = text[:max_chars]
+            if truncated:
+                text = text[:max_chars]
 
             return json.dumps({"url": url, "finalUrl": str(r.url), "status": r.status_code,
                               "extractor": extractor, "truncated": truncated, "length": len(text), "text": text}, ensure_ascii=False)
