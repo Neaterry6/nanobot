@@ -788,7 +788,7 @@ def _get_bridge_dir() -> Path:
 
     # Check for npm
     if not shutil.which("npm"):
-        console.print("[red]npm not found. Please install Node.js >= 18.[/red]")
+        console.print("[red]npm not found. Please install Node.js >= 20.[/red]")
         raise typer.Exit(1)
 
     # Find source bridge: first check package data, then source dir
