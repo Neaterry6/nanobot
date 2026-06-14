@@ -14,6 +14,8 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import readline from 'readline/promises';
+import { stdin as input, stdout as output } from 'process';
 import { join } from 'path';
 
 const VERSION = '0.1.0';
@@ -131,7 +133,13 @@ export class WhatsAppClient {
   private async maybeRequestPairingCode(): Promise<void> {
     if (this.pairingCodeIssued || await readRegistered(this.options.authDir)) return;
 
-    const number = normalizeNumber(this.options.phoneNumber || process.env.WHATSAPP_PHONE_NUMBER || '');
+    let number = normalizeNumber(this.options.phoneNumber || process.env.WHATSAPP_PHONE_NUMBER || '');
+    if (!number && process.stdin.isTTY) {
+      const rl = readline.createInterface({ input, output });
+      const answer = await rl.question('Enter WhatsApp phone number with country code for pairing: ');
+      rl.close();
+      number = normalizeNumber(answer || '');
+    }
     if (!number) {
       const message = 'WhatsApp number pairing requires WHATSAPP_PHONE_NUMBER (10-15 digits with country code). QR pairing is disabled.';
       console.error(message);
@@ -232,9 +240,32 @@ export class WhatsAppClient {
     return null;
   }
 
-  async sendMessage(to: string, text: string): Promise<void> {
+  async sendTyping(to: string): Promise<void> {
     if (!this.sock) throw new Error('Not connected');
+    await this.sock.sendPresenceUpdate('composing', to).catch(() => undefined);
+  }
+
+  async sendMessage(to: string, text: string, typing = true): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    if (typing) await this.sendTyping(to);
     await this.sock.sendMessage(to, { text });
+    await this.sock.sendPresenceUpdate('paused', to).catch(() => undefined);
+  }
+
+  async sendContact(to: string, text: string, contact: { name: string; phone: string }, typing = true): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    if (typing) await this.sendTyping(to);
+    const phone = String(contact.phone || '').replace(/\D/g, '');
+    const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${contact.name}\nTEL;type=CELL;waid=${phone}:+${phone}\nEND:VCARD`;
+    await this.sock.sendMessage(to, { contacts: { displayName: contact.name, contacts: [{ vcard }] }, text });
+    await this.sock.sendPresenceUpdate('paused', to).catch(() => undefined);
+  }
+
+  async sendSticker(to: string, media: string, typing = true): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    if (typing) await this.sendTyping(to);
+    await this.sock.sendMessage(to, { sticker: { url: media } });
+    await this.sock.sendPresenceUpdate('paused', to).catch(() => undefined);
   }
 
   async disconnect(): Promise<void> {

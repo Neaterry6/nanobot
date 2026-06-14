@@ -9,7 +9,7 @@ from loguru import logger
 from nanobot.bus.events import OutboundMessage
 from nanobot.bus.queue import MessageBus
 from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import WhatsAppConfig
+from nanobot.config.schema import OwnerConfig, WhatsAppConfig
 
 
 class WhatsAppChannel(BaseChannel):
@@ -22,9 +22,11 @@ class WhatsAppChannel(BaseChannel):
 
     name = "whatsapp"
 
-    def __init__(self, config: WhatsAppConfig, bus: MessageBus):
+    def __init__(self, config: WhatsAppConfig, bus: MessageBus, owner: OwnerConfig | None = None):
         super().__init__(config, bus)
         self.config: WhatsAppConfig = config
+        self.owner = owner or OwnerConfig()
+        self.owner_identifiers = {self.owner.phone, self.owner.normalized_phone}
         self._ws = None
         self._connected = False
         self._processed_message_ids: OrderedDict[str, None] = OrderedDict()
@@ -84,10 +86,15 @@ class WhatsAppChannel(BaseChannel):
 
         try:
             payload = {
-                "type": "send",
+                "type": msg.metadata.get("whatsapp_type", "send"),
                 "to": msg.chat_id,
-                "text": msg.content
+                "text": msg.content,
+                "typing": self.config.send_typing,
             }
+            if msg.media:
+                payload["media"] = msg.media[0]
+            if msg.metadata.get("contact"):
+                payload["contact"] = msg.metadata["contact"]
             await self._ws.send(json.dumps(payload, ensure_ascii=False))
         except Exception as e:
             logger.error("Error sending WhatsApp message: {}", e)
@@ -109,6 +116,7 @@ class WhatsAppChannel(BaseChannel):
             # New LID sytle typically:
             sender = data.get("sender", "")
             content = data.get("content", "")
+            is_group = data.get("isGroup", False)
             message_id = data.get("id", "")
 
             if message_id:
@@ -128,6 +136,13 @@ class WhatsAppChannel(BaseChannel):
                 logger.info("Voice message received from {}, but direct download from bridge is not yet supported.", sender_id)
                 content = "[Voice Message: Transcription not available for WhatsApp yet]"
 
+            if await self._maybe_answer_owner_question(sender, content):
+                return
+
+            if is_group and self.config.require_name_in_groups and not self._is_addressed(content):
+                logger.debug("Ignoring WhatsApp group message not addressed to bot")
+                return
+
             await self._handle_message(
                 sender_id=sender_id,
                 chat_id=sender,  # Use full LID for replies
@@ -135,7 +150,7 @@ class WhatsAppChannel(BaseChannel):
                 metadata={
                     "message_id": message_id,
                     "timestamp": data.get("timestamp"),
-                    "is_group": data.get("isGroup", False)
+                    "is_group": is_group
                 }
             )
 
@@ -159,3 +174,20 @@ class WhatsAppChannel(BaseChannel):
 
         elif msg_type == "error":
             logger.error("WhatsApp bridge error: {}", data.get('error'))
+
+    def _is_addressed(self, content: str) -> bool:
+        text = content.lower()
+        return "@" in content or any(name.lower() in text for name in self.config.respond_to_names)
+
+    async def _maybe_answer_owner_question(self, chat_id: str, content: str) -> bool:
+        text = content.lower()
+        if "owner" not in text:
+            return False
+        await self._ws.send(json.dumps({
+            "type": "contact",
+            "to": chat_id,
+            "text": f"My owner is {self.owner.name}.",
+            "typing": self.config.send_typing,
+            "contact": {"name": self.owner.name, "phone": self.owner.normalized_phone},
+        }, ensure_ascii=False))
+        return True

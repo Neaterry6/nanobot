@@ -128,3 +128,34 @@ def test_litellm_provider_canonicalizes_github_copilot_hyphen_prefix():
 def test_openai_codex_strip_prefix_supports_hyphen_and_underscore():
     assert _strip_model_prefix("openai-codex/gpt-5.1-codex") == "gpt-5.1-codex"
     assert _strip_model_prefix("openai_codex/gpt-5.1-codex") == "gpt-5.1-codex"
+
+
+def test_make_provider_uses_failover_when_olama_primary_with_fallback_key():
+    from nanobot.cli.commands import _make_provider
+    from nanobot.providers.failover_provider import FailoverProvider
+    from nanobot.providers.olama_provider import OlamaProvider
+
+    config = Config()
+    config.agents.defaults.provider = "olama"
+    config.agents.defaults.model = "broken"
+    config.providers.openrouter.api_key = "sk-or-v1-test"
+
+    provider = _make_provider(config)
+
+    assert isinstance(provider, FailoverProvider)
+    assert provider.providers[0][0] == "olama"
+    assert isinstance(provider.providers[0][1], OlamaProvider)
+    assert provider.providers[1][0] == "openrouter"
+
+
+def test_make_provider_returns_plain_olama_without_fallback_key():
+    from nanobot.cli.commands import _make_provider
+    from nanobot.providers.olama_provider import OlamaProvider
+
+    config = Config()
+    config.agents.defaults.provider = "olama"
+    config.agents.defaults.model = "broken"
+
+    provider = _make_provider(config)
+
+    assert isinstance(provider, OlamaProvider)

@@ -21,6 +21,9 @@ class WhatsAppConfig(Base):
     bridge_url: str = "ws://localhost:3001"
     bridge_token: str = ""  # Shared token for bridge auth (optional, recommended)
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
+    respond_to_names: list[str] = Field(default_factory=lambda: ["broken"])
+    require_name_in_groups: bool = True
+    send_typing: bool = True
 
 
 class TelegramConfig(Base):
@@ -323,6 +326,19 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
+class OwnerConfig(Base):
+    """Owner identity and safety settings."""
+
+    name: str = "brokenNova"
+    phone: str = "+2349137383531"
+    private: bool = True
+    allow_workspace_delete: bool = False
+
+    @property
+    def normalized_phone(self) -> str:
+        return "".join(ch for ch in self.phone if ch.isdigit())
+
+
 class Config(BaseSettings):
     """Root configuration for nanobot."""
 
@@ -331,6 +347,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    owner: OwnerConfig = Field(default_factory=OwnerConfig)
 
     @property
     def workspace_path(self) -> Path:
