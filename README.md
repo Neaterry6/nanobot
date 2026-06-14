@@ -680,13 +680,27 @@ Config file: `~/.nanobot/config.json`
 | `moonshot` | LLM (Moonshot/Kimi) | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `zhipu` | LLM (Zhipu GLM) | [open.bigmodel.cn](https://open.bigmodel.cn) |
 | `vllm` | LLM (local, any OpenAI-compatible server) | — |
-| `olama` | LLM fallback (local Olama agent API at `http://127.0.0.1:19074`) | — |
+| `olama` | **Primary local LLM** (local Olama agent API at `http://127.0.0.1:19074`) with configured providers as fallbacks | — |
 | `openai_codex` | LLM (Codex, OAuth) | `nanobot provider login openai-codex` |
 | `github_copilot` | LLM (GitHub Copilot, OAuth) | `nanobot provider login github-copilot` |
 
-#### Local Olama fallback
+#### Local Olama primary AI + media stack
 
-If you have the local Olama service running with `Olama API listening on http://127.0.0.1:19074`, configure broken to use it as the fallback agent provider:
+Use this setup when you want the locally hosted Olama service to be the **main AI for everything**, while paid or remote model providers remain configured only as fallbacks. Nanobot calls the local Olama agent API at `http://127.0.0.1:19074` through `POST /v1/agent/run`; if that primary provider returns an error, nanobot will try any other configured non-local API-key providers in registry order.
+
+**1. Start or install the local Olama service**
+
+Make sure your local service logs show:
+
+```text
+Olama API listening on http://127.0.0.1:19074
+```
+
+If you run nanobot in Docker, keep the `~/.nanobot` mount and expose the Olama host to the container. For Linux Docker users, `--network host` is the simplest local-only option; otherwise set the `olama.apiBase` below to a reachable host name such as `http://host.docker.internal:19074`.
+
+**2. Make Olama the primary provider**
+
+Merge this into `~/.nanobot/config.json`:
 
 ```json
 {
@@ -700,12 +714,107 @@ If you have the local Olama service running with `Olama API listening on http://
     "olama": {
       "apiKey": "no-key",
       "apiBase": "http://127.0.0.1:19074"
+    },
+    "openrouter": {
+      "apiKey": "sk-or-v1-optional-fallback"
+    },
+    "anthropic": {
+      "apiKey": "sk-ant-optional-fallback"
+    },
+    "openai": {
+      "apiKey": "sk-optional-fallback"
     }
   }
 }
 ```
 
-The provider calls `POST /v1/agent/run` with `prompt`, `chat_id`, and `max_history`. Your local media endpoints remain available separately, for example `/api/ai/imagegen?action=generate&prompt=blue%20robot&width=512&height=512&steps=25` and `/api/ai/videogen?prompt=neon%20city%20flythrough&seconds=4&width=512&height=512`.
+Only `providers.olama` is required. Any other provider with an `apiKey` is treated as a fallback for chat if Olama is unavailable.
+
+**3. Enable image and video generation**
+
+The Olama provider keeps local media endpoints available alongside chat. Your local service should expose these endpoints:
+
+```text
+GET /api/ai/imagegen?action=generate&prompt=blue%20robot&width=512&height=512&steps=25
+GET /api/ai/videogen?prompt=neon%20city%20flythrough&seconds=4&width=512&height=512
+```
+
+Recommended local models/tools for the Olama host:
+
+- **Images:** Stable Diffusion XL, Flux Schnell, or another local diffusion model behind `/api/ai/imagegen`.
+- **Video:** AnimateDiff, Stable Video Diffusion, Wan, or another local video pipeline behind `/api/ai/videogen`.
+- **Other tools:** Keep MCP servers in `tools.mcpServers` for files, browser automation, databases, and custom local tools; nanobot discovers MCP tools at startup.
+
+**4. Add a free multilingual voice model**
+
+For local speech output, install a free open-source TTS engine on the Olama host and expose it through your local media/API layer. Good defaults are:
+
+- **Piper** for fast lightweight offline voices.
+- **Coqui XTTS-v2** for multilingual voice cloning and broad language coverage.
+- **MMS-TTS** for many language-specific speech models.
+
+A practical local setup is to run Coqui XTTS-v2 or Piper as a small HTTP service, then expose an endpoint such as:
+
+```text
+POST /api/ai/tts
+{ "text": "Hello", "language": "auto", "voice": "default" }
+```
+
+> Note: no free model speaks every language perfectly. For best results, install multiple voices and route by language, with XTTS-v2 for multilingual speech and Piper/MMS voices for languages where you want higher quality.
+
+**5. Local search, Pterodactyl startup, owner mode, and WhatsApp pairing**
+
+For a Python Pterodactyl panel, use a startup command that installs Python deps, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
+
+```bash
+python -m pip install -e . && \
+  cd bridge && npm install && npm run build && cd .. && \
+  WHATSAPP_PHONE_NUMBER=2349137383531 npm --prefix bridge start & \
+  nanobot gateway
+```
+
+Recommended config for private owner mode, local-first reasoning/search, WhatsApp name-trigger replies, typing indicators, and owner contact cards:
+
+```json
+{
+  "owner": {
+    "name": "brokenNova",
+    "phone": "+2349137383531",
+    "private": true,
+    "allowWorkspaceDelete": false
+  },
+  "agents": {
+    "defaults": {
+      "model": "broken",
+      "provider": "olama",
+      "reasoningEffort": "high"
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "allowFrom": ["2349137383531"],
+      "respondToNames": ["broken", "brokenNova"],
+      "requireNameInGroups": true,
+      "sendTyping": true
+    }
+  },
+  "tools": {
+    "restrictToWorkspace": true,
+    "mcpServers": {
+      "local-search": {
+        "command": "npx",
+        "args": ["-y", "mcp-searxng"],
+        "env": {
+          "SEARXNG_URL": "http://127.0.0.1:8080"
+        }
+      }
+    }
+  }
+}
+```
+
+In WhatsApp groups, the bot ignores normal chatter and responds when someone says `broken`/`brokenNova` or tags the bot account. If someone asks about the owner, the WhatsApp channel sends the configured owner contact card and says the owner is `brokenNova`.
 
 <details>
 <summary><b>OpenAI Codex (OAuth)</b></summary>

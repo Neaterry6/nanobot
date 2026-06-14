@@ -201,9 +201,10 @@ def onboard():
 def _make_provider(config: Config):
     """Create the appropriate LLM provider from config."""
     from nanobot.providers.custom_provider import CustomProvider
+    from nanobot.providers.failover_provider import FailoverProvider
     from nanobot.providers.litellm_provider import LiteLLMProvider
-    from nanobot.providers.openai_codex_provider import OpenAICodexProvider
     from nanobot.providers.olama_provider import OlamaProvider
+    from nanobot.providers.openai_codex_provider import OpenAICodexProvider
 
     model = config.agents.defaults.model
     provider_name = config.get_provider_name(model)
@@ -213,13 +214,17 @@ def _make_provider(config: Config):
     if provider_name == "openai_codex" or model.startswith("openai-codex/"):
         return OpenAICodexProvider(default_model=model)
 
-    # Olama: local hosted fallback at http://127.0.0.1:19074
+    # Olama: local hosted primary at http://127.0.0.1:19074, with configured cloud/local providers as runtime fallbacks.
     if provider_name == "olama" or model.startswith("olama/") or model == "broken":
-        return OlamaProvider(
+        primary = OlamaProvider(
             api_key=p.api_key if p else "no-key",
             api_base=config.get_api_base(model) or "http://127.0.0.1:19074",
             default_model=model,
         )
+        fallbacks = _make_fallback_providers(config, exclude={"olama"})
+        if fallbacks:
+            return FailoverProvider([("olama", primary), *fallbacks], default_model=model)
+        return primary
 
     # Custom: direct OpenAI-compatible endpoint, bypasses LiteLLM
     if provider_name == "custom":
@@ -243,6 +248,67 @@ def _make_provider(config: Config):
         extra_headers=p.extra_headers if p else None,
         provider_name=provider_name,
     )
+
+
+def _make_fallback_providers(config: Config, exclude: set[str] | None = None):
+    """Create backup providers from configured API keys for runtime failover."""
+    from nanobot.providers.custom_provider import CustomProvider
+    from nanobot.providers.litellm_provider import LiteLLMProvider
+    from nanobot.providers.registry import PROVIDERS
+
+    exclude = exclude or set()
+    fallbacks = []
+    for spec in PROVIDERS:
+        if spec.name in exclude or spec.is_oauth or spec.is_local:
+            continue
+        p = getattr(config.providers, spec.name, None)
+        if not (p and p.api_key):
+            continue
+        fallback_model = _fallback_model_for_provider(spec.name, config.agents.defaults.model)
+        if spec.name == "custom":
+            fallbacks.append((
+                spec.name,
+                CustomProvider(
+                    api_key=p.api_key,
+                    api_base=p.api_base or "http://localhost:8000/v1",
+                    default_model=fallback_model,
+                ),
+            ))
+        else:
+            fallbacks.append((
+                spec.name,
+                LiteLLMProvider(
+                    api_key=p.api_key,
+                    api_base=p.api_base or (spec.default_api_base if spec.is_gateway else None),
+                    default_model=fallback_model,
+                    extra_headers=p.extra_headers,
+                    provider_name=spec.name,
+                ),
+            ))
+    return fallbacks
+
+
+def _fallback_model_for_provider(provider_name: str, primary_model: str) -> str:
+    """Choose a safe default backup model when Olama is the primary model."""
+    if provider_name == "openrouter":
+        return "anthropic/claude-opus-4-5"
+    if provider_name == "anthropic":
+        return "anthropic/claude-opus-4-5"
+    if provider_name == "openai":
+        return "gpt-5.1"
+    if provider_name == "deepseek":
+        return "deepseek-chat"
+    if provider_name == "gemini":
+        return "gemini/gemini-2.5-pro"
+    if provider_name == "groq":
+        return "groq/llama-3.3-70b-versatile"
+    if provider_name == "dashscope":
+        return "qwen-plus"
+    if provider_name == "moonshot":
+        return "kimi-k2.5"
+    if provider_name == "minimax":
+        return "MiniMax-M2.1"
+    return primary_model
 
 
 # ============================================================================

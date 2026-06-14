@@ -7,9 +7,12 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { WhatsAppClient, InboundMessage, PairingCodePayload } from './whatsapp.js';
 
 interface SendCommand {
-  type: 'send';
+  type: 'send' | 'typing' | 'contact' | 'sticker';
   to: string;
-  text: string;
+  text?: string;
+  media?: string;
+  typing?: boolean;
+  contact?: { name: string; phone: string };
 }
 
 interface BridgeMessage {
@@ -94,8 +97,15 @@ export class BridgeServer {
   }
 
   private async handleCommand(cmd: SendCommand): Promise<void> {
-    if (cmd.type === 'send' && this.wa) {
-      await this.wa.sendMessage(cmd.to, cmd.text);
+    if (!this.wa) return;
+    if (cmd.type === 'typing') {
+      await this.wa.sendTyping(cmd.to);
+    } else if (cmd.type === 'contact' && cmd.contact) {
+      await this.wa.sendContact(cmd.to, cmd.text || '', cmd.contact, cmd.typing !== false);
+    } else if (cmd.type === 'sticker' && cmd.media) {
+      await this.wa.sendSticker(cmd.to, cmd.media, cmd.typing !== false);
+    } else if (cmd.type === 'send') {
+      await this.wa.sendMessage(cmd.to, cmd.text || '', cmd.typing !== false);
     }
   }
 
