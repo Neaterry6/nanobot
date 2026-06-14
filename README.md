@@ -764,7 +764,7 @@ POST /api/ai/tts
 
 **5. Local search, Pterodactyl startup, owner mode, and WhatsApp pairing**
 
-For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps from `requirements.txt`, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
+For a Python Pterodactyl panel, keep the egg `PY_FILE` value set to `app.py` (the repository includes this launcher, so the panel does not fail with `can't open file '/home/container/app.py'`). Use a startup command that installs Python deps from `requirements.txt`, installs/builds the Node WhatsApp bridge, starts your local Olama/media stack, then starts nanobot. The default `requirements.txt` intentionally excludes optional Matrix dependencies, because Matrix end-to-end encryption support pulls `python-olm`, which often fails on hosted panels that do not provide system build tools such as `make`. If you enable the Matrix channel on a host with build tools installed, add `python -m pip install "nanobot-ai[matrix]"` before starting nanobot. The bridge asks for your WhatsApp number in the console if `WHATSAPP_PHONE_NUMBER` is not set, generates a pairing code, saves the session under `~/.nanobot/whatsapp-auth`, and reuses that session on later starts.
 
 ```bash
 python -m pip install -r requirements.txt && \
