@@ -149,9 +149,13 @@ class WhatsAppChannel(BaseChannel):
             elif status == "disconnected":
                 self._connected = False
 
+        elif msg_type == "pairing_code":
+            # Phone-number pairing code for authentication. QR pairing is disabled.
+            logger.info("WhatsApp pairing code for {}: {}", data.get("number"), data.get("code"))
+
         elif msg_type == "qr":
-            # QR code for authentication
-            logger.info("Scan QR code in the bridge terminal to connect WhatsApp")
+            # Legacy bridges may still emit QR events; current bridge ignores them.
+            logger.info("WhatsApp QR event ignored; use phone-number pairing instead")
 
         elif msg_type == "error":
             logger.error("WhatsApp bridge error: {}", data.get('error'))

@@ -4,7 +4,7 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import { WhatsAppClient, InboundMessage } from './whatsapp.js';
+import { WhatsAppClient, InboundMessage, PairingCodePayload } from './whatsapp.js';
 
 interface SendCommand {
   type: 'send';
@@ -13,7 +13,7 @@ interface SendCommand {
 }
 
 interface BridgeMessage {
-  type: 'message' | 'status' | 'qr' | 'error';
+  type: 'message' | 'status' | 'pairing_code' | 'error';
   [key: string]: unknown;
 }
 
@@ -33,8 +33,9 @@ export class BridgeServer {
     // Initialize WhatsApp client
     this.wa = new WhatsAppClient({
       authDir: this.authDir,
+      phoneNumber: process.env.WHATSAPP_PHONE_NUMBER,
       onMessage: (msg) => this.broadcast({ type: 'message', ...msg }),
-      onQR: (qr) => this.broadcast({ type: 'qr', qr }),
+      onPairingCode: (payload: PairingCodePayload) => this.broadcast({ type: 'pairing_code', ...payload }),
       onStatus: (status) => this.broadcast({ type: 'status', status }),
     });
 

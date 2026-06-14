@@ -1,6 +1,6 @@
 <div align="center">
   <img src="nanobot_logo.png" alt="nanobot" width="500">
-  <h1>nanobot: Ultra-Lightweight Personal AI Assistant</h1>
+  <h1>broken: Ultra-Lightweight Personal AI Assistant</h1>
   <p>
     <a href="https://pypi.org/project/nanobot-ai/"><img src="https://img.shields.io/pypi/v/nanobot-ai" alt="PyPI"></a>
     <a href="https://pepy.tech/project/nanobot-ai"><img src="https://static.pepy.tech/badge/nanobot-ai" alt="Downloads"></a>
@@ -170,7 +170,7 @@ Connect nanobot to your favorite chat platform.
 |---------|---------------|
 | **Telegram** | Bot token from @BotFather |
 | **Discord** | Bot token + Message Content intent |
-| **WhatsApp** | QR code scan |
+| **WhatsApp** | Phone-number pairing code (QR disabled) |
 | **Feishu** | App ID + App Secret |
 | **Mochat** | Claw token (auto-setup available) |
 | **DingTalk** | App Key + App Secret |
@@ -382,13 +382,16 @@ nanobot gateway
 <details>
 <summary><b>WhatsApp</b></summary>
 
-Requires **Node.js ≥18**.
+Requires **Node.js ≥20** for the Baileys bridge. This can run on a Node.js panel as long as the panel supports Node 20+, persistent processes, outbound network access, and writable auth storage (for example `~/.nanobot/whatsapp-auth`).
 
-**1. Link device**
+**1. Link device with a phone number (no QR)**
+
+Set your WhatsApp number with country code, then start the bridge/login flow. The bridge writes the latest code to `pairing.json` inside the auth directory and also broadcasts a `pairing_code` event to connected clients.
 
 ```bash
+export WHATSAPP_PHONE_NUMBER=15551234567
 nanobot channels login
-# Scan QR with WhatsApp → Settings → Linked Devices
+# Enter the printed pairing code in WhatsApp → Settings → Linked Devices → Link with phone number
 ```
 
 **2. Configure**
@@ -408,6 +411,7 @@ nanobot channels login
 
 ```bash
 # Terminal 1
+export WHATSAPP_PHONE_NUMBER=15551234567
 nanobot channels login
 
 # Terminal 2
@@ -676,8 +680,32 @@ Config file: `~/.nanobot/config.json`
 | `moonshot` | LLM (Moonshot/Kimi) | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `zhipu` | LLM (Zhipu GLM) | [open.bigmodel.cn](https://open.bigmodel.cn) |
 | `vllm` | LLM (local, any OpenAI-compatible server) | — |
+| `olama` | LLM fallback (local Olama agent API at `http://127.0.0.1:19074`) | — |
 | `openai_codex` | LLM (Codex, OAuth) | `nanobot provider login openai-codex` |
 | `github_copilot` | LLM (GitHub Copilot, OAuth) | `nanobot provider login github-copilot` |
+
+#### Local Olama fallback
+
+If you have the local Olama service running with `Olama API listening on http://127.0.0.1:19074`, configure broken to use it as the fallback agent provider:
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "model": "broken",
+      "provider": "olama"
+    }
+  },
+  "providers": {
+    "olama": {
+      "apiKey": "no-key",
+      "apiBase": "http://127.0.0.1:19074"
+    }
+  }
+}
+```
+
+The provider calls `POST /v1/agent/run` with `prompt`, `chat_id`, and `max_history`. Your local media endpoints remain available separately, for example `/api/ai/imagegen?action=generate&prompt=blue%20robot&width=512&height=512&steps=25` and `/api/ai/videogen?prompt=neon%20city%20flythrough&seconds=4&width=512&height=512`.
 
 <details>
 <summary><b>OpenAI Codex (OAuth)</b></summary>
@@ -896,7 +924,7 @@ MCP tools are automatically discovered and registered on startup. The LLM can us
 | `nanobot gateway` | Start the gateway |
 | `nanobot status` | Show status |
 | `nanobot provider login openai-codex` | OAuth login for providers |
-| `nanobot channels login` | Link WhatsApp (scan QR) |
+| `nanobot channels login` | Link WhatsApp with a phone-number pairing code (QR disabled) |
 | `nanobot channels status` | Show channel status |
 
 Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
