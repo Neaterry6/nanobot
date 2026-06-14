@@ -495,6 +495,18 @@ def gateway(
 
 
 
+@app.command("local-api")
+def local_api(
+    host: str = typer.Option("0.0.0.0", "--host", help="Host for the local AI API"),
+    port: int = typer.Option(19074, "--port", "-p", help="Port for the local AI API"),
+):
+    """Start the local Ollama/media/search endpoint API."""
+    from nanobot.local_api import run
+
+    console.print(f"{__logo__} Starting local AI API on {host}:{port}...")
+    run(host=host, port=port)
+
+
 
 # ============================================================================
 # Agent Commands
