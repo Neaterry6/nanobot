@@ -19,7 +19,8 @@ class WhatsAppConfig(Base):
 
     enabled: bool = False
     bridge_url: str = "ws://localhost:3001"
-    bridge_token: str = ""  # Shared token for bridge auth (optional, recommended)
+    bridge_token: str = ""  # Deprecated: kept for compatibility with old bridge configs
+    session_path: str = "~/.nanobot/whatsapp-auth/session.db"  # Neonize SQLite session store
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
     respond_to_names: list[str] = Field(default_factory=lambda: ["broken"])
     require_name_in_groups: bool = True
